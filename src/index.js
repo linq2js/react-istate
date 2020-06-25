@@ -1,4 +1,70 @@
-import {useEffect, useState, useRef} from 'react';
+import {
+  useEffect,
+  useState,
+  useRef,
+  createContext,
+  createElement,
+  useContext,
+} from 'react';
+
+const freezeContext = createContext(undefined);
+const unset = {};
+
+export function Freeze({isFrozen = false, children}) {
+  const parentFreeze = useContext(freezeContext);
+  const freeze = createFreeze(useRef(undefined), parentFreeze);
+  freeze.setFrozen(isFrozen);
+  useEffect(
+    () => () => {
+      freeze.dispose();
+    },
+    [],
+  );
+  return createElement(freezeContext.Provider, {value: freeze}, children);
+}
+
+function createFreeze(ref, parentFreeze) {
+  let freeze = ref.current;
+  if (!freeze) {
+    const subscriptions = new Set();
+    const rerenderFunctions = new Set();
+    let enabled = unset;
+    let renrenderTimerId;
+    ref.current = freeze = {
+      isFrozen() {
+        return enabled && (!parentFreeze || parentFreeze.isFrozen());
+      },
+      subscribe(subscription) {
+        subscriptions.add(subscription);
+        return () => subscriptions.delete(subscription);
+      },
+      setFrozen(value) {
+        if (enabled === unset) {
+          enabled = value;
+        } else if (enabled !== value) {
+          enabled = value;
+          for (const subscription of subscriptions) {
+            subscription();
+          }
+        }
+      },
+      rerenderChild(rerenderFn) {
+        clearTimeout(renrenderTimerId);
+        rerenderFunctions.add(rerenderFn);
+        renrenderTimerId = setTimeout(() => {
+          const copyOfRerenderFunctions = Array.from(rerenderFunctions);
+          rerenderFunctions.clear();
+          copyOfRerenderFunctions.forEach((f) => f());
+        }, 0);
+      },
+      dispose() {
+        subscriptions.clear();
+        rerenderFunctions.clear();
+      },
+    };
+  }
+  return freeze;
+}
 
 export function useValue(states) {
   const promises = [];
@@ -14,6 +80,8 @@ export function useValue(states) {
           return value.__loadable.value;
         case 'hasError':
           throw value.__loadable.error;
+        default:
+          break;
       }
     }
     return value;
@@ -94,13 +162,13 @@ export function useLoadable(states) {
 }
 
 function isStateApi(value) {
-  return Array.isArray(value) && value[1] && value[1].type === 'api';
+  return value && value.__istate === 'api';
 }
 
 function useStates(states, valueTransform) {
   let isMultiple = true;
   // is state func
-  if (typeof states === 'function' && states.type === 'state') {
+  if (states && states.__istate === 'state') {
     states = [states];
     isMultiple = false;
   }
@@ -115,6 +183,7 @@ function useStates(states, valueTransform) {
   const contextRef = useRef({});
 
   Object.assign(contextRef.current, {
+    freeze: useContext(freezeContext),
     apis: [],
     prevValues: contextRef.current.nextValues,
     unsubscribes: [],
@@ -129,21 +198,45 @@ function useStates(states, valueTransform) {
   }
 
   const values = states.map((state, index) => {
-    const [value, api] = isStateApi(state) ? state : state();
+    const api = isStateApi(state) ? state[1] : state()[1];
+    const value = api.get();
     contextRef.current.apis.push(api);
     contextRef.current.nextValues[index] = value;
     return valueTransform(value, contextRef.current, index);
   });
 
   useEffect(() => {
-    contextRef.current.apis.forEach((api) => {
-      contextRef.current.unsubscribes.push(
-        api.subscribe(contextRef.current.rerender),
-      );
+    const context = contextRef.current;
+    const unsubscribes = context.unsubscribes;
+    let isFrozen = false;
+    let shouldRerender = false;
+    const handleChange = () => {
+      if (isFrozen) {
+        shouldRerender = true;
+        return;
+      }
+      context.rerender();
+    };
+    if (context.freeze) {
+      const freeze = context.freeze;
+      isFrozen = freeze.isFrozen();
+      const handleFreezeChange = () => {
+        isFrozen = freeze.isFrozen();
+        if (!isFrozen && shouldRerender && !context.unmount) {
+          shouldRerender = false;
+          freeze.rerenderChild(context.rerender);
+        }
+      };
+      unsubscribes.push(freeze.subscribe(handleFreezeChange));
+    }
+    context.apis.forEach((api) => {
+      unsubscribes.push(api.subscribe(handleChange));
     });
-    return () =>
-      contextRef.current.unsubscribes.forEach((unsubscribe) => unsubscribe());
-  });
+    return () => {
+      contextRef.current.unmount = true;
+      unsubscribes.forEach((unsubscribe) => unsubscribe());
+    };
+  }, []);
 
   return isMultiple ? values : values[0];
 }

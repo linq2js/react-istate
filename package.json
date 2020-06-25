@@ -1,6 +1,6 @@
 {
   "name": "react-istate",
-  "version": "0.0.2",
+  "version": "0.0.8",
   "description": "A React hooks for istate",
   "main": "dist/index.js",
   "types": "src/index.d.ts",
@@ -29,7 +29,7 @@
   "dependencies": {},
   "peerDependencies": {
     "react": "^16.13.1",
-    "istate": "^0.0.6"
+    "istate": "^0.0.11"
   },
   "jest": {
     "transform": {
@@ -53,7 +53,8 @@
     "@babel/preset-env": "^7.7.7",
     "@babel/preset-react": "^7.7.4",
     "@babel/runtime": "^7.7.7",
-    "istate": "^0.0.7",
+    "istate": "^0.0.11",
+    "ijob": "^0.0.8",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "@testing-library/react": "^10.3.0"

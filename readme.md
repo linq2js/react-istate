@@ -30,6 +30,7 @@ const ProfilePage = () => (
 ```jsx harmony
 import {Suspense} from 'react';
 import istate from 'istate';
+import {Spinner} from 'ui-lib';
 import {useLoadable} from 'react-istate';
 const ProfileState = istate(async () => {
   const profile = await LoadProfile();

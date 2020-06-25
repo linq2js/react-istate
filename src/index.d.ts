@@ -16,3 +16,9 @@ export interface Loadable<T> {
   value: T;
   error: Error;
 }
+
+export function Freeze(props: FreezeProps): any;
+
+export interface FreezeProps {
+  isFrozen?: boolean;
+}
