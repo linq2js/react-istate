@@ -1,6 +1,6 @@
 # react-istate
 
-A React hooks for istate
+A React hooks for [istate](https://github.com/linq2js/istate)
 
 ## Using Suspense with async state
 
