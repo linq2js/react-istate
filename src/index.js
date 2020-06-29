@@ -1,3 +1,4 @@
+import {getStateList} from 'istate';
 import {
   useEffect,
   useState,
@@ -12,15 +13,20 @@ const unset = {};
 
 export function Freeze({isFrozen = false, children}) {
   const parentFreeze = useContext(freezeContext);
-  const freeze = createFreeze(useRef(undefined), parentFreeze);
-  freeze.setFrozen(isFrozen);
+  const freezeRef = useRef(undefined);
+  createFreeze(freezeRef, parentFreeze);
+  freezeRef.current.setFrozen(isFrozen);
   useEffect(
     () => () => {
-      freeze.dispose();
+      freezeRef.current.dispose();
     },
     [],
   );
-  return createElement(freezeContext.Provider, {value: freeze}, children);
+  return createElement(
+    freezeContext.Provider,
+    {value: freezeRef.current},
+    children,
+  );
 }
 
 function createFreeze(ref, parentFreeze) {
@@ -161,22 +167,9 @@ export function useLoadable(states) {
   );
 }
 
-function isStateApi(value) {
-  return value && value.__istate === 'api';
-}
-
 function useStates(states, valueTransform) {
-  let isMultiple = true;
-  // is state func
-  if (states && states.__istate === 'state') {
-    states = [states];
-    isMultiple = false;
-  }
-  // is state tuple
-  else if (isStateApi(states)) {
-    states = [states];
-    isMultiple = false;
-  } else if (!Array.isArray(states)) {
+  const stateList = getStateList(states);
+  if (!stateList.valid) {
     throw new Error('Invalid state input');
   }
   const [, rerender] = useState(undefined);
@@ -184,7 +177,7 @@ function useStates(states, valueTransform) {
 
   Object.assign(contextRef.current, {
     freeze: useContext(freezeContext),
-    apis: [],
+    states: stateList.states,
     prevValues: contextRef.current.nextValues,
     unsubscribes: [],
     nextValues: [],
@@ -197,10 +190,8 @@ function useStates(states, valueTransform) {
     contextRef.current.prevValues = contextRef.current.nextValues;
   }
 
-  const values = states.map((state, index) => {
-    const api = isStateApi(state) ? state[1] : state()[1];
-    const value = api.get();
-    contextRef.current.apis.push(api);
+  const values = stateList.states.map((state, index) => {
+    const value = state.get();
     contextRef.current.nextValues[index] = value;
     return valueTransform(value, contextRef.current, index);
   });
@@ -217,6 +208,7 @@ function useStates(states, valueTransform) {
       }
       context.rerender();
     };
+
     if (context.freeze) {
       const freeze = context.freeze;
       isFrozen = freeze.isFrozen();
@@ -229,14 +221,15 @@ function useStates(states, valueTransform) {
       };
       unsubscribes.push(freeze.subscribe(handleFreezeChange));
     }
-    context.apis.forEach((api) => {
-      unsubscribes.push(api.subscribe(handleChange));
+
+    context.states.forEach((state) => {
+      unsubscribes.push(state.subscribe(handleChange));
     });
     return () => {
-      contextRef.current.unmount = true;
+      context.unmount = true;
       unsubscribes.forEach((unsubscribe) => unsubscribe());
     };
   }, []);
 
-  return isMultiple ? values : values[0];
+  return stateList.multiple ? values : values[0];
 }

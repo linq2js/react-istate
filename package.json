@@ -1,6 +1,6 @@
 {
   "name": "react-istate",
-  "version": "0.0.8",
+  "version": "0.0.15",
   "description": "A React hooks for istate",
   "main": "dist/index.js",
   "types": "src/index.d.ts",
@@ -10,9 +10,9 @@
     "_publish": "npm run test && npm run build && npm publish"
   },
   "bugs": {
-    "url": "https://github.com/linq2js/istate/issues"
+    "url": "https://github.com/linq2js/react-istate/issues"
   },
-  "homepage": "https://github.com/linq2js/istate#readme",
+  "homepage": "https://github.com/linq2js/react-istate#readme",
   "keywords": [
     "scope",
     "functional",
@@ -26,10 +26,11 @@
   ],
   "author": "",
   "license": "ISC",
-  "dependencies": {},
+  "dependencies": {
+    "istate": "^0.0.15"
+  },
   "peerDependencies": {
-    "react": "^16.13.1",
-    "istate": "^0.0.11"
+    "react": "^16.13.1"
   },
   "jest": {
     "transform": {
@@ -53,7 +54,6 @@
     "@babel/preset-env": "^7.7.7",
     "@babel/preset-react": "^7.7.4",
     "@babel/runtime": "^7.7.7",
-    "istate": "^0.0.11",
     "ijob": "^0.0.8",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
