@@ -77,15 +77,15 @@ export function useValue(states) {
   const result = useStates(states, (value) => {
     // is promise like
     if (value && typeof value.then === 'function') {
-      enableLoadableLogic(value);
-      switch (value.__loadable.state) {
+      const loadable = value.loadable;
+      switch (loadable.state) {
         case 'loading':
           promises.push(value);
           break;
         case 'hasValue':
-          return value.__loadable.value;
+          return loadable.value;
         case 'hasError':
-          throw value.__loadable.error;
+          throw loadable.error;
         default:
           break;
       }
@@ -98,56 +98,17 @@ export function useValue(states) {
   return result;
 }
 
-function enableLoadableLogic(promise) {
-  if (promise.__loadable) {
-    return;
-  }
-  const listeners = new Set();
-  let sameThread = true;
-  promise.__loadable = {
-    state: 'loading',
-    value: undefined,
-  };
-  promise.__onDone = (listener) => {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-  };
-  promise
-    .then(
-      (payload) => {
-        promise.__loadable = {
-          state: 'hasValue',
-          value: payload,
-        };
-      },
-      (error) => {
-        promise.__loadable = {
-          state: 'error',
-          error,
-        };
-      },
-    )
-    .finally(() => {
-      if (!sameThread) {
-        for (const listener of listeners) {
-          listener();
-        }
-      }
-    });
-  sameThread = false;
-}
-
 export function useLoadable(states) {
   return useStates(
     states,
     (value, {prevValues, rerender, unsubscribes}, index) => {
       if (value && typeof value.then === 'function') {
-        enableLoadableLogic(value);
+        const loadable = value.loadable;
         // if the promise is still loading
-        if (value.__loadable.state === 'loading') {
+        if (loadable.state === 'loading') {
           // we should re-render the component once promise is done
           unsubscribes.push(
-            value.__onDone(() => {
+            loadable.subscribe(() => {
               // do nothing if current value has been changed since last render
               if (prevValues[index] !== value) {
                 return;
@@ -156,7 +117,7 @@ export function useLoadable(states) {
             }),
           );
         }
-        return value.__loadable;
+        return loadable;
       }
 
       return {
