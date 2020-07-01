@@ -1,6 +1,6 @@
 {
   "name": "react-istate",
-  "version": "0.0.19",
+  "version": "0.0.20",
   "description": "A React hooks for istate",
   "main": "dist/index.js",
   "types": "src/index.d.ts",
@@ -27,7 +27,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "istate": "^0.0.19"
+    "istate": "^0.0.20"
   },
   "peerDependencies": {
     "react": "^16.13.1"
