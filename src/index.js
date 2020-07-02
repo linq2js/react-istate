@@ -160,9 +160,19 @@ function useStates(states, valueTransform) {
   useEffect(() => {
     const context = contextRef.current;
     const unsubscribes = context.unsubscribes;
+
     let isFrozen = false;
     let shouldRerender = false;
     const handleChange = () => {
+      if (
+        context.states.length === context.nextValues.length &&
+        context.states.every(
+          (state, index) => state.get() === context.nextValues[index],
+        )
+      ) {
+        return;
+      }
+
       if (isFrozen) {
         shouldRerender = true;
         return;
